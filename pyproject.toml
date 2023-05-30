@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "auto-tx-dmv"
+version = "0.1.0"
+description = "Automatically make Texas DMV appointments"
+authors = ["Samuel Thomas <sgpthomas@gmail.com>"]
+readme = "README.md"
+packages = [{include = "auto_tx_dmv"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+selenium = "^4.9.1"
+click = "^8.1.3"
+
+[tool.poetry.group.dev.dependencies]
+pyright = "^1.1.310"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
