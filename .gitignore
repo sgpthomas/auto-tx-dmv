@@ -1,3 +1,4 @@
-/geckodriver.log
+geckodriver.log
 /play.org
 /poetry.lock
+/config.toml

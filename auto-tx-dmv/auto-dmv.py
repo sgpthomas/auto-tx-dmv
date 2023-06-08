@@ -2,12 +2,13 @@
 
 from selenium import webdriver
 from selenium.common import exceptions
-from selenium.webdriver import ActionChains
-from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.support.wait import WebDriverWait
 import click
 import time
+import tomllib
 
 
 DATEFMT = "%m/%d/%Y"
@@ -35,7 +36,7 @@ def make_appointment(driver, datestr):
             e.click()
             break
 
-    click_btn(driver, "Confirm")
+    driver.click("Confirm")
 
 
 def parse_table(web_element):
@@ -72,12 +73,28 @@ def parse_table(web_element):
 
 
 class Driver:
-    def __init__(self, gui=True):
-        options = Options()
-        options.page_load_strategy = "normal"
-        if not gui:
-            options.add_argument("--headless")
-        self.driver = webdriver.Firefox(options=options)
+    def __init__(self, gui=True, browser="firefox"):
+        match browser:
+            case "firefox":
+                options = FirefoxOptions()
+                options.page_load_strategy = "normal"
+                if not gui:
+                    options.add_argument("--headless")
+
+                self.driver = webdriver.Firefox(options=options)
+            case "chrome":
+                options = ChromeOptions()
+                options.page_load_strategy = "normal"
+                if not gui:
+                    options.add_argument("--headless")
+
+                self.driver = webdriver.Chrome(options=options)
+            case x:
+                raise Exception(
+                    f"{x} is not a supported browser.\n"
+                    + " [firefox, chrome] are valid options."
+                )
+
         self.driver.implicitly_wait(2)
 
     def load(self, url):
@@ -118,6 +135,15 @@ class Driver:
     def css(self, text):
         return self.driver.find_elements(By.CSS_SELECTOR, text)
 
+    def button_exists(self, text) -> bool:
+        elems = self.driver.find_elements(
+            By.XPATH, f"//button[normalize-space()='{text}']"
+        )
+        return elems != []
+
+    def quit(self):
+        self.driver.quit()
+
 
 def find_appointments(
     driver: Driver | None = None,
@@ -138,7 +164,6 @@ def find_appointments(
     assert isinstance(email, str)
     assert isinstance(zipcode, str)
 
-    print("Loading https://public.txdpsscheduler.com/")
     driver.load("https://public.txdpsscheduler.com/")
 
     driver.click("English")
@@ -160,7 +185,10 @@ def find_appointments(
     time.sleep(1)
     driver.click("Log On")
     driver.click("New Appointment")
-    driver.click("OK")
+
+    time.sleep(1)
+    if driver.button_exists("OK"):
+        driver.click("OK")
     driver.click("Apply for first time Texas DL/Permit")
 
     driver.fill("Cell Phone", cell.split("-"))
@@ -187,78 +215,33 @@ def find_appointments(
     appointment_table = parse_table(els[0]) + parse_table(els[1])
     return sorted(appointment_table, key=lambda x: x["date"])
 
-    # # make the appointment!
-    # if time.strptime(datestr, DATEFMT) < time.strptime(best_current, DATEFMT):
-    #     print("Yahooo!!!!!")
-    #     make_appointment(driver, datestr)
-    #     current_apt_date = datestr
-    # else:
-    #     print("Didn't find anything sonner :(")
-
-    # print("Finished, waiting 30 secs")
-    # time.sleep(30)
-
-    # return els
-
-
-def main():
-    current_apt_date = "6/2/2023"
-    while True:
-        try:
-            pass
-        except Exception as e:
-            print("Crashed!", e)
-
 
 @click.command()
-@click.option("--name", help="Your full name, separated by spaces")
-@click.option("--email", help="Your email")
-@click.option("--dob", help="Date of Birth, separated by slashes")
-@click.option("--cell", help="Cell phone number, separted by dashes")
-@click.option("--ssn", help="Last 4 digits of Social Security Number")
-@click.option("--zipcode", help="Zip code")
-@click.option("--current", help="Best current appointment date")
-@click.option("--loop", help="Run the script in an infinite loop", is_flag=True)
-@click.option(
-    "--commit", help="Give the script permission to make appointments", is_flag=True
-)
-@click.option("--gui", is_flag=True)
-def cli(name, email, dob, cell, ssn, zipcode, current, loop, commit, gui):
-    dob = normalize_date(dob)
-    current = normalize_date(current)
+@click.argument("config_path")
+def cli(config_path):
+    with open(config_path, "rb") as f:
+        config = tomllib.load(f)
 
-    driver = Driver()
+    print(config)
 
-    firstname, lastname = name.split(" ")
+    driver = Driver(
+        gui=config["settings"]["gui"], browser=config["settings"]["browser"]
+    )
     appts = find_appointments(
         driver=driver,
-        firstname=firstname,
-        lastname=lastname,
-        dob=dob,
-        ssn=ssn,
-        cell=cell,
-        email=email,
-        zipcode=zipcode,
+        firstname=config["dmv"]["first-name"],
+        lastname=config["dmv"]["last-name"],
+        dob=normalize_date(config["dmv"]["birth-date"]),
+        ssn=config["dmv"]["last-4-ssn"],
+        cell=config["dmv"]["cell"],
+        email=config["dmv"]["email"],
+        zipcode=config["dmv"]["zipcode"],
     )
 
     print(appts)
 
-    input()
     driver.quit()
 
 
 if __name__ == "__main__":
     cli()
-
-
-d = Driver()
-appts = find_appointments(
-    driver=d,
-    firstname="Samuel",
-    lastname="Thomas",
-    dob="08/05/1998",
-    ssn="3748",
-    cell="323-360-6970",
-    email="sgpthomas@gmail.com",
-    zipcode="78722",
-)

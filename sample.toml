@@ -1,0 +1,14 @@
+[dmv]
+first-name = "Jane"
+last-name = "Doe"
+birth-date = "01/01/1111"
+last-4-ssn = "1111"
+cell = "000-000-0000"
+email = "janedoe@gmail.com"
+zipcode = "78722"  # This is used to determine your location
+
+[settings]
+gui = true
+browser = "firefox"
+loop = false
+commit = false

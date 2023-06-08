@@ -2,6 +2,18 @@
 
 Because who has time to wait
 
+## Installation
+
+You need [poetry](https://python-poetry.org/docs/) installed.
+
+Then `poetry install` will install dependencies for you. Then, fill in your information in`sample.toml`.
+
+To run:
+
+```shell
+poetry run auto-tx-dmv/main.py sample.toml
+```
+
 ## Usage
 
 ## reCAPTCHA
