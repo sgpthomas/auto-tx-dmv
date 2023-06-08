@@ -11,7 +11,7 @@ Then `poetry install` will install dependencies for you. Then, fill in your info
 To run:
 
 ```shell
-poetry run auto-tx-dmv/main.py sample.toml
+poetry run python auto-tx-dmv/main.py sample.toml
 ```
 
 ## Usage
