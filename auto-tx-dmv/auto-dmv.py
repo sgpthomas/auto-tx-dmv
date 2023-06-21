@@ -18,26 +18,6 @@ def normalize_date(datestr):
     return time.strftime(DATEFMT, time.strptime(datestr, DATEFMT))
 
 
-def make_appointment(driver, datestr):
-    appts = driver.find_elements(By.CSS_SELECTOR, ".card.blue")
-    for card in appts:
-        print(card.text)
-        if datestr in card.text:
-            card.click()
-            break
-
-    slots = driver.find_elements(By.CSS_SELECTOR, ".slot-card.blue-grey")
-    if len(slots) > 0:
-        slots[0].click()
-
-    els = driver.find_elements(By.CSS_SELECTOR, ".button")
-    for e in els:
-        if "NEXT" in e.text:
-            e.click()
-            break
-
-    driver.click("Confirm")
-
 
 def parse_table(web_element):
     lines = web_element.text.splitlines()
@@ -66,6 +46,7 @@ def parse_table(web_element):
                 "address": row[1],
                 "distance": float(dist_date[0]),
                 "date": time.strptime(dist_date[-1], DATEFMT),
+                "datestr": dist_date[-1],
             }
         ]
 
@@ -143,6 +124,42 @@ class Driver:
 
     def quit(self):
         self.driver.quit()
+
+
+def make_appointment(
+        driver,
+        date,
+        datestr,
+        best_current
+):
+    # make the appointment!
+    if best_current is None or date < best_current:
+        print("Yahooo!!!!!")
+        appts = driver.driver.find_elements(By.CSS_SELECTOR, ".card.blue")
+        for card in appts:
+            print(card.text)
+            if datestr in card.text:
+                card.click()
+                break
+
+        slots = driver.driver.find_elements(By.CSS_SELECTOR, ".slot-card.blue-grey")
+        if len(slots) > 0:
+            slots[0].click()
+
+        els = driver.driver.find_elements(By.CSS_SELECTOR, ".button")
+        for e in els:
+            if "NEXT" in e.text:
+                e.click()
+                break
+        driver.click("Confirm")
+        best_current = date
+    else:
+        print("Didn't find anything sooner :(")
+
+    print("Finished, waiting 30 secs")
+    time.sleep(30)
+
+    return best_current
 
 
 def find_appointments(
@@ -227,18 +244,24 @@ def cli(config_path):
     driver = Driver(
         gui=config["settings"]["gui"], browser=config["settings"]["browser"]
     )
-    appts = find_appointments(
-        driver=driver,
-        firstname=config["dmv"]["first-name"],
-        lastname=config["dmv"]["last-name"],
-        dob=normalize_date(config["dmv"]["birth-date"]),
-        ssn=config["dmv"]["last-4-ssn"],
-        cell=config["dmv"]["cell"],
-        email=config["dmv"]["email"],
-        zipcode=config["dmv"]["zipcode"],
-    )
+    current_appt_date = None
 
-    print(appts)
+    loop = True
+    while loop:
+        appts = find_appointments(
+            driver=driver,
+            firstname=config["dmv"]["first-name"],
+            lastname=config["dmv"]["last-name"],
+            dob=normalize_date(config["dmv"]["birth-date"]),
+            ssn=config["dmv"]["last-4-ssn"],
+            cell=config["dmv"]["cell"],
+            email=config["dmv"]["email"],
+            zipcode=config["dmv"]["zipcode"],
+        )
+        print(appts)
+        if config["settings"]["commit"]:
+            current_appt_date = make_appointment(driver, appts[0]["date"], appts[0]["datestr"], current_appt_date, )
+        loop = config["settings"]["loop"]
 
     driver.quit()
 
